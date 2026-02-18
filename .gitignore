@@ -1,0 +1,6 @@
+# Build artifacts
+*.exe
+*.exe~
+*_linux
+*_windows
+*.out
