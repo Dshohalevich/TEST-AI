@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engineering Calculator</title>
+  <style>
+    :root {
+      --bg: #0f0f12;
+      --panel: #1c1c1e;
+      --key: #2c2c2e;
+      --key-fn: #3a3a3c;
+      --key-op: #ff9f0a;
+      --key-light: #a5a5a8;
+      --text: #f5f5f7;
+      --muted: #8e8e93;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #202028 0%, var(--bg) 55%);
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      display: grid;
+      place-items: center;
+      color: var(--text);
+    }
+    .phone {
+      width: min(430px, 96vw);
+      background: linear-gradient(180deg, #26262a 0%, #111113 70%);
+      border-radius: 36px;
+      padding: 18px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .display-wrap {
+      background: var(--panel);
+      border-radius: 24px;
+      padding: 16px;
+      min-height: 132px;
+      margin-bottom: 14px;
+    }
+    .title { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+    .expr { color: #c7c7cc; font-size: 18px; min-height: 24px; text-align: right; word-break: break-all; }
+    .result { font-size: 42px; text-align: right; font-weight: 600; margin-top: 6px; word-break: break-all; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+    button {
+      border: none;
+      border-radius: 16px;
+      height: 58px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 500;
+      background: var(--key);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      cursor: pointer;
+    }
+    button.fn { background: var(--key-fn); }
+    button.op { background: var(--key-op); }
+    button.light { background: var(--key-light); color: #161616; }
+    button:active { transform: translateY(1px); filter: brightness(1.05); }
+    .hint { text-align: center; color: var(--muted); margin-top: 12px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="display-wrap">
+      <div class="title">Engineering Calculator · iOS style</div>
+      <div id="expr" class="expr"></div>
+      <div id="result" class="result">0</div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="hint">Angles are in radians</div>
+  </div>
+
+  <script>
+    const exprEl = document.getElementById('expr');
+    const resultEl = document.getElementById('result');
+    const grid = document.getElementById('grid');
+
+    const keys = [
+      ['sin','fn'], ['cos','fn'], ['tan','fn'], ['ln','fn'], ['log','fn'], ['C','light'],
+      ['(', 'fn'], [')', 'fn'], ['π', 'fn'], ['e', 'fn'], ['⌫','light'], ['÷','op'],
+      ['7'], ['8'], ['9'], ['√','fn'], ['xʸ','op'], ['×','op'],
+      ['4'], ['5'], ['6'], ['ANS','fn'], ['%','fn'], ['-','op'],
+      ['1'], ['2'], ['3'], ['±','fn'], ['.'], ['+','op'],
+      ['0'], ['00'], [','], ['=','op']
+    ];
+
+    let expr = '';
+    let ans = 0;
+
+    for (const [label, cls=''] of keys) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.className = cls;
+      b.onclick = () => press(label);
+      grid.appendChild(b);
+    }
+
+    function press(label) {
+      if (label === 'C') { expr = ''; update('0'); return; }
+      if (label === '⌫') { expr = expr.slice(0, -1); update(evalSafe()); return; }
+      if (label === '=') { const v = evalSafe(); if (v !== 'Error') { ans = v; expr = String(v); } update(v); return; }
+
+      const map = {
+        '×':'*', '÷':'/', 'xʸ':'^', 'π':'pi', '√':'sqrt(', '±':'(-', 'ANS':'ans', ',':'.',
+        'sin':'sin(', 'cos':'cos(', 'tan':'tan(', 'ln':'ln(', 'log':'log(', '%':'/100'
+      };
+      expr += (map[label] ?? label);
+      update(evalSafe());
+    }
+
+    function update(value) {
+      exprEl.textContent = expr;
+      resultEl.textContent = value;
+    }
+
+    function evalSafe() {
+      try {
+        if (!expr.trim()) return '0';
+        const transformed = expr
+          .replace(/\bans\b/g, `(${ans})`)
+          .replace(/\bpi\b/g, `(${Math.PI})`)
+          .replace(/\be\b/g, `(${Math.E})`)
+          .replace(/sqrt\(/g, 'Math.sqrt(')
+          .replace(/sin\(/g, 'Math.sin(')
+          .replace(/cos\(/g, 'Math.cos(')
+          .replace(/tan\(/g, 'Math.tan(')
+          .replace(/ln\(/g, 'Math.log(')
+          .replace(/log\(/g, '(Math.log10?Math.log10:((x)=>Math.log(x)/Math.LN10))(')
+          .replace(/\^/g, '**');
+
+        const v = Function(`"use strict"; return (${transformed});`)();
+        if (!Number.isFinite(v)) return 'Error';
+        return Number(v.toFixed(10)).toString();
+      } catch {
+        return 'Error';
+      }
+    }
+  </script>
+</body>
+</html>
